@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Tussle</title>
+    <link rel="stylesheet" href="style.css?v=1.1">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>SONG TUSSLE</h1>
+    </header>
+
+    <main id="game-container">
+        <div id="pantalla-inicio" class="caja-juego active">
+            <h2>BIENVENIDO</h2>
+            <div id="paso-nombre">
+                <p>Para empezar, introduce tu nombre:</p>
+                <input type="text" id="input-nombre" placeholder="Tu nombre aquí..." maxlength="15">
+                <button id="btn-continuar-nombre">Continuar</button>
+            </div>
+            <div id="opciones-sala" style="display: none;">
+                <hr>
+                <p>¡Hola, <b id="nombre-saludo"></b>! Ahora crea una sala o únete a una.</p>
+                <button id="btn-crear">Crear Sala Nueva</button>
+                <br>
+                <input type="text" id="input-sala" placeholder="CÓDIGO DE LA SALA">
+                <button id="btn-unirse">Unirse a Sala</button>
+                <p id="error-sala" class="error-texto"></p>
+            </div>
+        </div>
+
+        <div id="lobby" class="caja-juego">
+            <h2>Sala de Juego</h2>
+            <p>Código para unirse: <b id="codigo-sala" class="codigo-resaltado"></b></p>
+            
+            <button id="btn-conectar-spotify" class="spotify-button" style="display: none;">
+                <img src="https://storage.googleapis.com/pr-newsroom-wp/1/2018/11/Spotify_Logo_RGB_White.png" alt="Logo Spotify">
+                Paso 1: Conectar con Spotify
+            </button>
+            
+            <p id="status-playlist" class="status-mensaje" style="display: none;"></p>
+            
+            <h4>Jugadores Conectados:</h4>
+            <ul id="lista-jugadores"></ul>
+            <button id="btn-empezar-partida" style="display: none;">Paso 3: Empezar Partida</button>
+        </div>
+
+        <div id="seccion-playlist" class="caja-juego">
+            <h2>Paso 2: Elige una Playlist</h2>
+            <p>Las canciones del juego se sacarán de la playlist que elijas.</p>
+            <div class="custom-select-wrapper">
+                <select id="lista-playlists"></select>
+            </div>
+            <button id="btn-confirmar-playlist">Confirmar Playlist</button>
+        </div>
+
+        <div id="seccion-cancion-aleatoria" class="caja-juego">
+            <h2>Tu Canción Asignada</h2>
+            <div id="info-cancion"></div>
+            <button id="btn-omitir-cancion">Omitir Canción (Skip)</button>
+            <button id="btn-seleccionar-cancion">Seleccionar Esta Canción</button>
+        </div>
+
+        <div id="seccion-mostrar-letra" class="caja-juego">
+            <h2 id="titulo-seleccion-versos">Elige los Versos</h2>
+            <p id="mensaje-letra-manual"></p>
+            <div id="lyrics-container" class="lyrics-container"></div>
+            <p id="instruccion-seleccion">Selecciona las líneas para tu reto.</p>
+            <button id="btn-fijar-versos" style="display: none;">Fijar Versos y Elegir Respuesta</button>
+            <button id="btn-ir-a-proponer">Entendido, ¡a proponer!</button>
+        </div>
+        
+        <div id="seccion-proponer" class="caja-juego">
+            <h2>Crea tu Reto</h2>
+            <p>Pega los 4 versos que elegiste y selecciona la dificultad.</p>
+            <input type="text" id="prop-cancion" placeholder="Nombre de la canción" readonly><br>
+            <input type="text" id="prop-artista" placeholder="Nombre del artista" readonly><br>
+            <textarea id="prop-versos" placeholder="Pega aquí los 4 versos de la canción"></textarea><br>
+            
+            <div id="campo-siguiente-verso" style="display: none;">
+                <input type="text" id="prop-siguiente-verso" placeholder="Escribe aquí el siguiente verso exacto" readonly><br>
+            </div>
+            <div class="custom-select-wrapper">
+                <select id="prop-dificultad">
+                    <option value="facil">Fácil</option>
+                    <option value="media">Media</option>
+                    <option value="dificil">Difícil</option>
+                </select>
+            </div>
+            <button id="btn-enviar-propuesta">¡Listo! Enviar Propuesta</button>
+            <p id="esperando-propuestas"></p>
+        </div>
+        
+        <div id="seccion-adivinar" class="caja-juego">
+            <h2>¡A Adivinar!</h2>
+            
+            <div id="contenedor-reto">
+                <blockquote id="versos-para-adivinar"></blockquote>
+                <img id="caratula-album" src="" alt="Carátula del álbum">
+            </div>
+
+            <p id="dificultad-reto"></p>
+            
+            <div id="campos-ronda-normal">
+                <input type="text" id="adv-cancion" placeholder="Adivina el nombre de la canción"><br>
+                <input type="text" id="adv-artista" placeholder="Adivina el/los artista(s)"><br>
+                <div id="campos-extra-artista-completo">
+                     <input type="text" id="adv-album" placeholder="Adivina el nombre del álbum"><br>
+                     <input type="text" id="adv-ano" placeholder="Adivina el año de lanzamiento"><br>
+                </div>
+            </div>
+
+            <div id="campos-ronda-album">
+                <input type="text" id="adv-album-ra" placeholder="Nombre del Álbum"><br>
+                <input type="text" id="adv-artista-ra" placeholder="Artista Principal"><br>
+                <input type="text" id="adv-cancion-ra" placeholder="Una canción del álbum"><br>
+                <input type="text" id="adv-ano-ra" placeholder="Año de lanzamiento"><br>
+            </div>
+
+            <div id="campo-adivinar-verso">
+                <input type="text" id="adv-siguiente-verso" placeholder="Escribe el siguiente verso"><br>
+            </div>
+
+            <button id="btn-enviar-respuesta">Enviar Respuesta</button>
+        </div>
+
+        <div id="seccion-resultados" class="caja-juego">
+            <h2>Resultados de la Ronda</h2>
+            <div id="resumen-ronda"></div>
+            <hr>
+            <h4>Puntuaciones Totales</h4>
+            <ul id="lista-puntuaciones"></ul>
+            <button id="btn-siguiente-ronda">Siguiente Ronda</button>
+            <button id="btn-volver-lobby-resultados">Volver al Lobby</button>
+        </div>
+
+        <div id="seccion-anuncio-ronda" class="caja-juego">
+            <h2 id="anuncio-numero-ronda"></h2>
+            <h3 id="anuncio-tipo-ronda"></h3>
+        </div>
+
+        <div id="seccion-fin-juego" class="caja-juego">
+            <h2>¡Fin de la Partida!</h2>
+            <h4>Clasificación Final</h4>
+            <ul id="lista-puntuaciones-final"></ul>
+            <p>¡Enhorabuena al ganador!</p>
+            <button id="btn-jugar-otra-vez">Jugar de Nuevo</button>
+        </div>
+    </main>
+    
+    <div class="particles-container">
+        <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    </div>
+    
+    <div id="strike-overlay" class="strike-overlay">
+        <div id="strike-text-container">
+            <h1>¡STRIKE!</h1>
+            <p>Reporte por dificultad incorrecta</p>
+        </div>
+        <div class="particle-container">
+            <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+            <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+        </div>
+        <svg id="flying-tomato" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <g><path d="M78.4,43.3C78.4,27,65.2,13.8,48.9,13.8S19.4,27,19.4,43.3c0,13.6,9.4,25.1,22.1,28.6c-0.1-0.1,0.5,1.2,0.5,1.2 c-2.7,0.8-5.5,1.2-8.5,1.2c-12.7,0-23.2-5.9-23.2-13.3c0-0.7,0-1.3,0.1-2c-0.4-0.2-0.8-0.4-1.1-0.7c-2.3-1.6-3.7-4.2-3.7-7 c0-5.1,4.1-9.2,9.2-9.2c2.8,0,5.4,1.3,7.1,3.3c3.9-10.2,14-17.3,25.8-17.3c15.2,0,27.5,11.2,27.5,25c0,2.8-0.4,5.4-1.2,7.9 C93.1,62.1,88.4,61.9,78.4,43.3z" fill="#3A9A4A"/><path d="M82.2,43.1c0-18.4-14.9-33.3-33.3-33.3S15.6,24.7,15.6,43.1c0,15,10,27.5,23.3,31.5c3.2-11,13.2-18.9,24.8-18.9 C73.1,55.7,82.2,48.4,82.2,43.1z" fill="#D8352A"/></g>
+        </svg>
+        <svg id="tomato-splat" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#D8352A" d="M411.3,184.8C389,141.2,388.9,32,388.9,32s-63.1,109.1-105.7,130.2c-23,11.4-46,12-46,12s-30.9-20.9-63.9-20.9 c-42.3,0-85.1,38.6-85.1,38.6s19.3-51.4,2.9-93.5c-16.4-42.1-51.4-30.9-51.4-30.9s30.9,51.4,40.1,74.5 c9.2,23-1.8,49.6-1.8,49.6s-40.1-12.9-65.7,14.7C10.7,262.3,1.3,346.7,1.3,346.7s58.8-21.9,102.3-1c23,11.4,32.8,32.8,32.8,32.8 s-32.8-20-55.8-31.1c-23-11.1-60.3-2.8-60.3-2.8s26.5,88.6,83.4,109.7c26.5,9.2,54.8,9.2,54.8,9.2s-23.7-27.4-31.9-49.6 c-8.3-22.1,8.3-46,8.3-46s31.9,29.5,60.3,27.6c28.5-1.8,59-20.2,59-20.2s-12,50.2,6.4,79.2c18.4,29,55.3,42.4,55.3,42.4 s-33.8-44.2-22.1-76.4c9.2-25.8,38.7-42.4,38.7-42.4s-38.7,12-62,2.8c-23.2-9.2-30.1-33.1-30.1-33.1s33.1,23,62,31.3 c28.8,8.3,72.8-1,72.8-1s-33.1-81.2-91.2-113.3C445.1,219.7,422.1,199.5,411.3,184.8z"/>
+        </svg>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-toggle">
+            <span>CHAT</span>
+            <div id="chat-unread-dot"></div>
+        </div>
+        <div id="chat-window">
+            <div id="chat-messages"></div>
+            <form id="chat-form">
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." autocomplete="off">
+                <button type="submit">→</button>
+            </form>
+        </div>
+    </div>
+    
+    <audio id="splat-sound" src="abucheo.mp3" preload="auto"></audio>
+    
+    <script src="script.js?v=1.1"></script>
+
+</body>
+</html>

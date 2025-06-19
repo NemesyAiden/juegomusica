@@ -1,0 +1,6 @@
+# Ignorar la carpeta de dependencias de Node.
+# Se reinstala automáticamente.
+node_modules
+
+# ¡MUY IMPORTANTE! Ignorar el archivo con las claves secretas.
+.env

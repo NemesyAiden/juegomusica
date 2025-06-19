@@ -23,8 +23,7 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 const spotifyApi = new SpotifyWebApi({
     clientId: process.env.SPOTIFY_CLIENT_ID,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-    // MODIFICACIÓN 1: Usar la variable de entorno para la URL de callback
-    redirectUri: process.env.BACKEND_URL + '/callback'
+    redirectUri: process.env.BACKEND_URL + '/callback' // Debe estar así
 });
 
 // --- VARIABLES GLOBALES ---

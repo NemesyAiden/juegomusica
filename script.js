@@ -1,4 +1,4 @@
-const socket = io("http://127.0.0.1:3001");
+const socket = io("https://song-tussle.onrender.com");
 
 const pantallas = {
     inicio: document.getElementById('pantalla-inicio'),
@@ -175,7 +175,7 @@ document.getElementById('btn-unirse').addEventListener('click', () => {
 document.getElementById('btn-conectar-spotify').addEventListener('click', () => {
     sessionStorage.setItem('salaHost', miSalaId);
     sessionStorage.setItem('nombreHost', miNombre);
-    window.location.href = 'http://127.0.0.1:3001/login';
+    window.location.href = 'https://song-tussle.onrender.com/login';
 });
 
 socket.on('playlistsRecibidas', (playlists) => {

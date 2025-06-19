@@ -23,7 +23,8 @@ const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } 
 const spotifyApi = new SpotifyWebApi({
     clientId: process.env.SPOTIFY_CLIENT_ID,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-    redirectUri: 'http://127.0.0.1:3001/callback'
+    // MODIFICACIÓN 1: Usar la variable de entorno para la URL de callback
+    redirectUri: process.env.BACKEND_URL + '/callback'
 });
 
 // --- VARIABLES GLOBALES ---
@@ -194,7 +195,8 @@ app.get('/callback', (req, res) => {
                 console.error('No se pudo refrescar el token de acceso', err);
             }
         }, (data.body['expires_in'] * 0.9) * 1000);
-        res.redirect('http://127.0.0.1:5500/index.html?login=success');
+        // MODIFICACIÓN 2: Usar la variable de entorno para la URL del frontend
+        res.redirect(process.env.FRONTEND_URL + '?login=success');
     }).catch(err => {
         console.error('Error al obtener los Tokens:', err);
         res.send(`Error al obtener los Tokens: ${err}`);
@@ -621,7 +623,8 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = 3001;
+// MODIFICACIÓN 3: Usar el puerto de la variable de entorno, o 3001 como alternativa
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto ${PORT}`);
 });

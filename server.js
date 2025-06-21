@@ -1,5 +1,5 @@
 // =================================================================
-//      SERVER.JS (Versión sin MusicBrainz, con Autocorrección)
+//      SERVER.JS (Versión con corrección de robustez)
 // =================================================================
 
 // --- REQUIRES ---
@@ -194,7 +194,6 @@ app.get('/callback', (req, res) => {
                 console.error('No se pudo refrescar el token de acceso', err);
             }
         }, (data.body['expires_in'] * 0.9) * 1000);
-        // MODIFICACIÓN 2: Usar la variable de entorno para la URL del frontend
         res.redirect(process.env.FRONTEND_URL + '?login=success');
     }).catch(err => {
         console.error('Error al obtener los Tokens:', err);
@@ -446,40 +445,89 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ================================================================
+    // ========= INICIO DEL BLOQUE CORREGIDO Y ROBUSTO ================
+    // ================================================================
     socket.on('distribuirRetos', (idSala) => {
         const sala = salas[idSala];
-        if (!sala) return;
+        if (!sala || !sala.propuestas || Object.keys(sala.propuestas).length === 0) {
+            console.error(`[ERROR] Se intentó distribuir retos en la sala ${idSala} sin propuestas.`);
+            return;
+        }
+    
         const jugadores = sala.jugadores.map(j => j.id);
         const propuestas = sala.propuestas;
         let receptores = [...jugadores];
+    
+        // Barajamos los receptores para que nadie se adivine a sí mismo
         for (let i = receptores.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [receptores[i], receptores[j]] = [receptores[j], receptores[i]];
         }
+    
+        // Nos aseguramos de que nadie se reciba a sí mismo
         for (let i = 0; i < jugadores.length; i++) {
             if (jugadores[i] === receptores[i]) {
                 const sig = (i + 1) % jugadores.length;
                 [receptores[i], receptores[sig]] = [receptores[sig], receptores[i]];
             }
         }
+    
         for (let i = 0; i < jugadores.length; i++) {
             const idJugadorQueAdivina = jugadores[i];
             const idJugadorQuePropuso = receptores[i];
+            
             sala.asignaciones[idJugadorQueAdivina] = idJugadorQuePropuso;
+    
             const propuestaAsignada = propuestas[idJugadorQuePropuso];
-            const pistaOriginal = sala.pistas.find(p => p.track.name === propuestaAsignada.cancion);
+            if (!propuestaAsignada) {
+                console.error(`[ERROR] No se encontró la propuesta para el jugador ${idJugadorQuePropuso}`);
+                continue; // Evita que el juego se rompa si falta una propuesta
+            }
+            
+            // Búsqueda más robusta de la pista original
+            const pistaOriginal = sala.pistas.find(p => 
+                p && p.track && normalizar(p.track.name) === normalizar(propuestaAsignada.cancion)
+            );
+    
+            // Si la pista no se encuentra, creamos un reto vacío para no bloquear el juego
+            if (!pistaOriginal) {
+                console.error(`[ERROR] No se encontró la pista original para "${propuestaAsignada.cancion}"`);
+                io.to(idJugadorQueAdivina).emit('recibirReto', {
+                    tipo: 'ERROR',
+                    versos: 'Hubo un error al generar tu reto. Se saltará tu turno en la puntuación.',
+                    dificultad: 'ninguna'
+                });
+                continue;
+            }
+    
+            // Construcción del reto de forma explícita y segura
             let reto = {
                 dificultad: propuestaAsignada.dificultad,
                 tipo: sala.tipoRondaActual
             };
-            if (sala.tipoRondaActual === 'RONDA_ALBUM' && pistaOriginal) {
-                reto.caratulaUrl = pistaOriginal.track.album.images[0].url;
-            } else {
-                reto.versos = propuestaAsignada.versos;
+    
+            // Aquí está la lógica robusta que arregla TODAS las rondas especiales
+            switch (sala.tipoRondaActual) {
+                case 'RONDA_ALBUM':
+                    reto.caratulaUrl = pistaOriginal.track.album.images[0]?.url || ''; // Usamos optional chaining por seguridad
+                    break;
+                
+                // Para el resto de rondas (NORMAL, CONTINUACION, ARTISTA_COMPLETO), necesitamos los versos
+                case 'NORMAL':
+                case 'CONTINUACION':
+                case 'ARTISTA_COMPLETO':
+                default:
+                    reto.versos = propuestaAsignada.versos;
+                    break;
             }
+            
             io.to(idJugadorQueAdivina).emit('recibirReto', reto);
         }
     });
+    // ================================================================
+    // ============== FIN DEL BLOQUE CORREGIDO Y ROBUSTO ==============
+    // ================================================================
 
     socket.on('enviarRespuesta', async ({ idSala, respuesta }) => {
         const sala = salas[idSala];
@@ -490,21 +538,13 @@ io.on('connection', (socket) => {
                 for (const jugador of sala.jugadores) {
                     const idJugadorQueAdivina = jugador.id;
                     const idJugadorQuePropuso = sala.asignaciones[idJugadorQueAdivina];
-                    
-                    // =======================================================
-                    // =============== INICIO DE LA CORRECCIÓN ===============
-                    // =======================================================
-                    // ANTES (Incorrecto): Se usaba la propuesta del jugador que adivinaba
-                    // const propuestaOriginal = sala.propuestas[idJugadorQueAdivina];
-                    
-                    // AHORA (Correcto): Usamos la propuesta del jugador que propuso el reto
                     const propuestaOriginal = sala.propuestas[idJugadorQuePropuso];
-                    // =======================================================
-                    // ================= FIN DE LA CORRECCIÓN ================
-                    // =======================================================
+                    
+                    if (!propuestaOriginal) continue;
 
                     const pistaOriginal = sala.pistas.find(p => p.track.name === propuestaOriginal.cancion);
                     if (!pistaOriginal) continue;
+
                     const respuestaJugador = sala.respuestas[idJugadorQueAdivina];
                     let puntosGanados = 0;
                     let aciertos = {};
@@ -622,7 +662,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// MODIFICACIÓN 3: Usar el puerto de la variable de entorno, o 3001 como alternativa
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Servidor escuchando en el puerto ${PORT}`);
